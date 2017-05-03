@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Welcome to Vue</title>
+  <script src="https://unpkg.com/vue/dist/vue.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.16.1/axios.js"></script>
+  <style>
+    body {font-family: Arial, Helvetica, sans-serif}
+    #app {display: flex; flex-direction: column;}
+    .show-details {background-color: lightcyan;padding:10px;}
+    .show-details > div {display:flex; }
+    .show-details > div > * {margin: 10px;}
+    .show-details > div > img {height: 400px;}
+    .show-details .properties .label{font-weight: bold; margin-right: 5px;}
+    .episode-list > ul {list-style: none;}
+    button {font-size:20px; background: cyan; border: none; padding:10px; color: white; outline: none;}
+  </style>
+</head>
+
+<body>
+
+  <div id="app">
+    <div class="show-details">
+      <div>
+        <label>
+          <select v-model="selectedShow">
+            <option v-for="show in showList" :value="show.id">{{show.name}}</option>
+          </select>
+        </label>
+      </div>
+      <h1>{{show.name}}</h1>
+      <div>
+        <img :src="show.image">
+        <div class="properties">
+          <div v-html="show.summary"></div>
+          <div><span class="label">Network:</span>{{show.network}}</div>
+          <div><span class="label">Days:</span></div>
+          <ul>
+            <li v-for="day in show.schedule.days">{{day}}</li>
+          </ul>
+          <div><span class="label">Show Time:</span>{{showTime}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="episode-list">
+      <ul>
+        <li v-for="(episodes, seasonNumber) in episodesBySeason">
+          <h2><button @click="toggleSeasonNumber(seasonNumber)">Season {{seasonNumber}}</button></h2>
+          <div v-show="seasonNumber === showSeasonNumber" v-for="episode in episodes">
+            <h2><a :href="episode.url" target="_blank">{{episode.name}}</a></h2>
+            <strong>Season {{episode.season}} episode {{episode.number}}</strong>
+            <p v-html="episode.summary">
+          </div>
+        </li>
+        <!--<li v-for="episode in show.episodes">
+          <div>
+            <h2><a :href="episode.url">{{episode.name}}</a></h2>
+            <strong>Season {{episode.season}} episode {{episode.number}}</strong>
+            <p v-html="episode.summary">
+          </div>
+        </li>-->
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        showSeasonNumber: null,
+        showList: [
+          {id: 1, name: 'Breaking Bad', url: 'http://api.tvmaze.com/singlesearch/shows?q=breaking-bad&embed=episodes'},
+          {id: 2, name: 'Silicon Valley', url: 'http://api.tvmaze.com/singlesearch/shows?q=silicon-valley&embed=episodes'},
+          {id: 3, name: 'Jessica Jones', url: 'http://api.tvmaze.com/singlesearch/shows?q=jessica-jones&embed=episodes'},
+          {id: 4, name: 'The Get Down', url: 'http://api.tvmaze.com/singlesearch/shows?q=the-get-down&embed=episodes'},
+          {id: 5, name: 'Daredevil', url: 'http://api.tvmaze.com/singlesearch/shows?q=daredevil&embed=episodes'},
+          {id: 6, name: 'Luke Cage', url: 'http://api.tvmaze.com/singlesearch/shows?q=luke-cage&embed=episodes'},
+          {id: 8, name: 'Iron Fist', url: 'http://api.tvmaze.com/singlesearch/shows?q=iron-fist&embed=episodes'},
+          {id: 9, name: 'Archer', url: 'http://api.tvmaze.com/singlesearch/shows?q=Archer&embed=episodes'},
+          {id: 10, name: 'Game of Thrones', url: 'http://api.tvmaze.com/singlesearch/shows?q=Game-of-thrones&embed=episodes'},
+          {id: 11, name: 'Westworld', url: 'http://api.tvmaze.com/singlesearch/shows?q=Westworld&embed=episodes'},
+          {id: 12, name: 'Cosmos', url: 'http://api.tvmaze.com/singlesearch/shows?q=Cosmos&embed=episodes'},
+          {id: 13, name: 'Stranger Things', url: 'http://api.tvmaze.com/singlesearch/shows?q=stranger-things&embed=episodes'},
+          {id: 14, name: 'Arrested Development', url: 'http://api.tvmaze.com/singlesearch/shows?q=arrested-development&embed=episodes'},
+          {id: 15, name: 'Sesame Street', url: 'http://api.tvmaze.com/singlesearch/shows?q=seseme-street&embed=episodes'},
+          // {id: , name: '', url: ''},
+        ],
+        selectedShow: null,
+        show: {
+          name: '',
+          image: '',
+          summary: '',
+          network: '',
+          schedule: {
+            days: [],
+            time: ''
+          },
+          episodes: []
+        }
+      },
+      watch: {
+        selectedShow (id) {
+          this.loadAShow(id)
+        }
+      },
+      computed: {
+        showTime () {
+          var mockdate = new Date('1/1/2000 ' + this.show.schedule.time)
+          let hours = mockdate.getHours() % 12
+          let period = mockdate.getHours() > 12 ? 'pm' : 'am'
+          return `${hours} ${period}`
+        },
+        episodesBySeason () {
+          return this.show.episodes
+                      .reduce((carry, episode) => {
+                        if (!carry.hasOwnProperty(episode.season)) {
+                          carry[episode.season] = []
+                        }
+                        carry[episode.season].push(episode)
+                        return carry
+                      }, {})
+        }
+      },
+      methods: {
+        toggleSeasonNumber (number) {
+          if (this.showSeasonNumber !== number) {
+            this.showSeasonNumber = number
+            return
+          }
+          this.showSeasonNumber = null
+        },
+        loadAShow (showId) {
+          let vm = this
+          let show = this.showList.filter(show => show.id ===showId)[0]
+
+          if (typeof show === 'undefined') {
+            console.error("Can't find show")
+            return
+          }
+
+          axios.get(show.url)
+            .then(result => {
+              vm.populateState(result.data)
+            })
+            .catch(error => {
+              console.error(error)
+            })
+        },
+        populateState (showData) {
+          this.show.name = showData.name
+          this.show.image = showData.image.original
+          this.show.summary = showData.summary
+          this.show.network = showData.network !== null ? showData.network.name : 'unknown'
+          this.show.schedule.days = showData.schedule.days
+          this.show.schedule.time = showData.schedule.time
+          this.show.episodes = showData._embedded.episodes
+        }
+      },
+      mounted () {
+        this.selectedShow = 1
+      }
+    })
+  </script>
+
+</body>
+</html>
