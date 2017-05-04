@@ -20,16 +20,24 @@
 
 <body>
 
+  <script type="text/x-template" id="show-selector">
+        <label>
+          <select v-model="currentShow">
+            <option v-for="show in showList" :value="show.id">{{show.name}}</option>
+          </select>
+        </label>
+  </script>
+
   <div id="app">
 
     <div class="show-details">
 
       <div>
-        <label>
-          <select v-model="selectedShow">
-            <option v-for="show in showList" :value="show.id">{{show.name}}</option>
-          </select>
-        </label>
+        <show-selector
+          :selected-show="selectedShow"
+          :show-list="showList"
+          @select-show="loadAShow"
+        ></show-selector>
       </div>
 
       <h1>{{show.name}}</h1>
@@ -71,8 +79,28 @@
   </div>
 
   <script>
+
+    let ShowSelector = Vue.component('show-selector', {
+      template: '#show-selector',
+      props: ['selectedShow', 'showList'],
+      data: () => {
+        return {
+          currentShow: null
+        }
+      },
+      mounted () {
+        this.currentShow = this.selectedShow
+      },
+      watch: {
+        currentShow () {
+          this.$emit('select-show', this.currentShow)
+        }
+      }
+    })
+
     new Vue({
       el: '#app',
+      components: {ShowSelector},
       data: {
         showSeasonNumber: null,
         showList: [
@@ -163,7 +191,7 @@
           this.show.episodes = showData._embedded.episodes
         }
       },
-      mounted () {
+      created () {
         this.selectedShow = 1
       }
     })
