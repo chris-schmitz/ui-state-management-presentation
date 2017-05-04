@@ -20,66 +20,72 @@
 
 <body>
 
+  <!--
+    =============================================
+    Our component templates
+    =============================================
+  -->
   <script type="text/x-template" id="show-selector">
+      <div>
         <label>
           <select v-model="currentShow">
             <option v-for="show in showList" :value="show.id">{{show.name}}</option>
           </select>
         </label>
+      </div>
   </script>
 
-  <div id="app">
-
-    <div class="show-details">
-
-      <div>
-        <show-selector
-          :selected-show="selectedShow"
-          :show-list="showList"
-          @select-show="loadAShow"
-        ></show-selector>
-      </div>
-
-      <h1>{{show.name}}</h1>
-
-      <div>
-        <img :src="show.image">
-        <div class="properties">
-          <div v-html="show.summary"></div>
-          <div><span class="label">Network:</span>{{show.network}}</div>
-          <div><span class="label">Days:</span></div>
-          <ul>
-            <li v-for="day in show.schedule.days">{{day}}</li>
-          </ul>
-          <div><span class="label">Show Time:</span>{{showTime}}</div>
-        </div>
+  <script type="text/x-template" id="show-details">
+    <div>
+      <img :src="show.image">
+      <div class="properties">
+        <div v-html="show.summary"></div>
+        <div><span class="label">Network:</span>{{show.network}}</div>
+        <div><span class="label">Days:</span></div>
+        <ul>
+          <li v-for="day in show.schedule.days">{{day}}</li>
+        </ul>
+        <div><span class="label">Show Time:</span>{{showTime}}</div>
       </div>
     </div>
+  </script>
 
+  <script type="text/x-template" id="episode-list">
     <div class="episode-list">
       <ul>
-        <li v-for="(episodes, seasonNumber) in episodesBySeason">
+        <li v-for="(episodes, seasonNumber) in episodesPerSeason">
           <h2><button @click="toggleSeasonNumber(seasonNumber)">Season {{seasonNumber}}</button></h2>
           <div v-show="seasonNumber === showSeasonNumber" v-for="episode in episodes">
             <h2><a :href="episode.url" target="_blank">{{episode.name}}</a></h2>
             <strong>Season {{episode.season}} episode {{episode.number}}</strong>
-            <p v-html="episode.summary">
+            <p v-html="episode.summary"></p>
           </div>
         </li>
-        <!--<li v-for="episode in show.episodes">
-          <div>
-            <h2><a :href="episode.url">{{episode.name}}</a></h2>
-            <strong>Season {{episode.season}} episode {{episode.number}}</strong>
-            <p v-html="episode.summary">
-          </div>
-        </li>-->
       </ul>
     </div>
+  </script>
 
+  <!--
+    =============================================
+    Our app markup
+    =============================================
+  -->
+  <div id="app">
+    <div class="show-details">
+      <show-selector :selected-show="selectedShow" :show-list="showList" @select-show="loadAShow"></show-selector>
+      <h1>{{show.name}}</h1>
+      <show-details :show="show"></show-details>
+    </div>
+    <episode-list :episodes-per-season="episodesBySeason"></episode-list>
   </div>
 
-  <script>
 
+  <script>
+    /*
+      =============================================
+      Our components
+      =============================================
+    */
     let ShowSelector = Vue.component('show-selector', {
       template: '#show-selector',
       props: ['selectedShow', 'showList'],
@@ -98,11 +104,47 @@
       }
     })
 
+    let ShowDetails = Vue.component('show-details', {
+      template: '#show-details',
+      props: ['show'],
+      computed: {
+        showTime () {
+          var mockdate = new Date('1/1/2000 ' + this.show.schedule.time)
+          let hours = mockdate.getHours() % 12
+          let period = mockdate.getHours() > 12 ? 'pm' : 'am'
+          return `${hours} ${period}`
+        }
+      }
+    })
+
+    let EpisodeList = Vue.component('episode-list', {
+      template: '#episode-list',
+      props: ['episodesPerSeason'],
+      data: () => {
+        return {
+          showSeasonNumber: null
+        }
+      },
+      methods: {
+        toggleSeasonNumber (number) {
+          if (this.showSeasonNumber !== number) {
+            this.showSeasonNumber = number
+            return
+          }
+          this.showSeasonNumber = null
+        }
+      }
+    })
+
+    /*
+      =============================================
+      Our root component
+      =============================================
+    */
     new Vue({
       el: '#app',
-      components: {ShowSelector},
+      components: {ShowSelector, ShowDetails, EpisodeList},
       data: {
-        showSeasonNumber: null,
         showList: [
           {id: 1, name: 'Breaking Bad', url: 'http://api.tvmaze.com/singlesearch/shows?q=breaking-bad&embed=episodes'},
           {id: 2, name: 'Silicon Valley', url: 'http://api.tvmaze.com/singlesearch/shows?q=silicon-valley&embed=episodes'},
@@ -139,12 +181,6 @@
         }
       },
       computed: {
-        showTime () {
-          var mockdate = new Date('1/1/2000 ' + this.show.schedule.time)
-          let hours = mockdate.getHours() % 12
-          let period = mockdate.getHours() > 12 ? 'pm' : 'am'
-          return `${hours} ${period}`
-        },
         episodesBySeason () {
           return this.show.episodes
                       .reduce((carry, episode) => {
@@ -157,13 +193,6 @@
         }
       },
       methods: {
-        toggleSeasonNumber (number) {
-          if (this.showSeasonNumber !== number) {
-            this.showSeasonNumber = number
-            return
-          }
-          this.showSeasonNumber = null
-        },
         loadAShow (showId) {
           let vm = this
           let show = this.showList.filter(show => show.id ===showId)[0]
